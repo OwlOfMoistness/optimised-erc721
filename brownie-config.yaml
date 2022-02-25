@@ -1,0 +1,14 @@
+networks:
+  default: mainnet-fork
+
+dependencies:
+  - OpenZeppelin/openzeppelin-contracts@4.4.0
+
+compiler:
+  solc:
+    optimizer:
+      enabled: true
+      runs: 9999
+    version: 0.8.11
+    remappings:
+      - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.4.0"
