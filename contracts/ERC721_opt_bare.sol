@@ -25,8 +25,11 @@ interface IERC721Receiver {
 	external returns (bytes4);
 }
 
-contract ERC721_Slim is IERC721Metadata, ERC165 {
+contract ERC721_Barebone is IERC721Metadata, ERC165 {
 
+
+	uint256 constant _totalSupply = 10000;
+	uint256 public constant PRICE = 1000000000;
 
 	bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
 	bytes4 private constant _INTERFACE_ID_ERC721 = 0x80ac58cd;
@@ -38,10 +41,8 @@ contract ERC721_Slim is IERC721Metadata, ERC165 {
 	string private _symbol;
 
 	// ownerOf => 0
-	// balances => 1
 	// approvals => 2
 	// op approvals => 3
-	// totalSupply => 4
 
 	constructor (string memory name_, string memory symbol_) {
 		_name = name_;
@@ -87,18 +88,19 @@ contract ERC721_Slim is IERC721Metadata, ERC165 {
 	}
 
 	function balanceOf(address _owner) public override view returns(uint256 balance_) {
-		assembly{
-			mstore(128, _owner)
-			mstore(160, 1)
-			balance_ := sload(keccak256(128, 0x40))
+		address owner;
+		for (uint256 i = 0; i < _totalSupply; i++) {
+			assembly{
+				mstore(128, i)
+				mstore(160, 0)
+				owner := sload(keccak256(128, 0x40))
+			}
+			balance_ += owner == _owner ? 1 : 0;
 		}
 	}
 
-	function totalSupply() public view returns(uint256 supply) {
-		assembly {
-			mstore(128, 4)
-			supply := sload(keccak256(128, 0x20))
-		}
+	function totalSupply() public pure returns(uint256) {
+		return _totalSupply - 1;
 	}
 
 	function isApprovedForAll(address _owner, address _operator) public view virtual override returns (bool ret) {
@@ -161,6 +163,39 @@ contract ERC721_Slim is IERC721Metadata, ERC165 {
 		_mint(_to, _tokenId);
 	}
 
+	function mint_Aci() external payable {
+		uint256 nextToken;
+		assembly{
+			mstore(320, 4)
+			nextToken := add(sload(keccak256(320, 0x20)), 1)
+		}
+		require(nextToken < _totalSupply + 1, "max");
+		require(msg.value == PRICE, "wrong price");
+		require(msg.sender == tx.origin, "only EOA");
+		emit Transfer(address(0), msg.sender, nextToken);
+		address receiver = msg.sender;
+		assembly {
+			mstore(128, nextToken)
+			mstore(160, 0)
+			sstore(keccak256(128, 0x40), receiver)
+			mstore(320, 4)
+			sstore(keccak256(320, 0x20), nextToken)
+		}
+	}
+
+	function mint_540(uint256 _id) external payable {
+		require(_id < _totalSupply + 1, "max");
+		require(msg.value == PRICE, "wrong price");
+		require(msg.sender == tx.origin, "only EOA");
+		emit Transfer(address(0), msg.sender, _id);
+		address receiver = msg.sender;
+		assembly {
+			mstore(128, _id)
+			mstore(160, 0)
+			sstore(keccak256(128, 0x40), receiver)
+		}
+	}
+
 	function mintBatch(address _to, uint256[] calldata _tokenIds) external {
 		_mintBatch(_to, _tokenIds);
 	}
@@ -182,11 +217,6 @@ contract ERC721_Slim is IERC721Metadata, ERC165 {
 			mstore(256, _tokenId)
 			mstore(288, 0)
 			sstore(keccak256(256, 0x40), _to) // ownerOf
-			mstore(256, _from)
-			mstore(288, 1)
-			sstore(keccak256(256, 0x40), sub(sload(keccak256(256, 0x40)), 1)) // bal from
-			mstore(256, _to)
-			sstore(keccak256(256, 0x40), add(sload(keccak256(256, 0x40)), 1)) //  bal to
 		}
 		emit Transfer(_from, _to, _tokenId);
 	}
@@ -205,15 +235,7 @@ contract ERC721_Slim is IERC721Metadata, ERC165 {
 				mstore(288, 0)
 				sstore(keccak256(256, 0x40), _to) // ownerOf
 			}
-
 			emit Transfer(_from, _to, _tokenIds[i]);
-		}
-		assembly {
-			mstore(256, _from)
-			mstore(288, 1)
-			sstore(keccak256(256, 0x40), sub(sload(keccak256(256, 0x40)), len)) // bal from
-			mstore(256, _to)
-			sstore(keccak256(256, 0x40), add(sload(keccak256(256, 0x40)), len)) //  bal to
 		}
 	}
 
@@ -227,14 +249,9 @@ contract ERC721_Slim is IERC721Metadata, ERC165 {
 		// require(ownerOf(_tokenId) == address(0), "ERC721: token already minted");
 
 		assembly {
-			mstore(128, _to)
-			mstore(160, 1)
-			sstore(keccak256(128, 0x40), add(sload(keccak256(128, 0x40)), 1))
 			mstore(128, _tokenId)
 			mstore(160, 0)
 			sstore(keccak256(128, 0x40), _to)
-			mstore(128, 4)
-			sstore(keccak256(128, 0x20), add(sload(keccak256(128, 0x20)), 1))
 		}
 
 		emit Transfer(address(0), _to, _tokenId);
@@ -255,13 +272,6 @@ contract ERC721_Slim is IERC721Metadata, ERC165 {
 			}
 
 			emit Transfer(address(0), _to, _tokenIds[i]);
-		}
-		assembly {
-			mstore(320, _to)
-			mstore(352, 1)
-			sstore(keccak256(320, 0x40), add(sload(keccak256(320, 0x40)), len))
-			mstore(320, 4)
-			sstore(keccak256(320, 0x20), add(sload(keccak256(320, 0x20)), len))
 		}
 	}
 
@@ -316,7 +326,6 @@ contract ERC721_Slim is IERC721Metadata, ERC165 {
 			mstore(192, 3)
 			sstore(keccak256(128, 0x60), _approved)
 		}
-		// _operatorApprovals[_owner][_operator] = _approved;
 		emit ApprovalForAll(_owner, _operator, _approved);
 	}
 

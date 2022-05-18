@@ -7,8 +7,12 @@ def minter_(accounts):
     return accounts[0]
 
 @pytest.fixture(scope="module")
-def nft(ERC721Opt, minter_):
-    return ERC721Opt.deploy("","",{'from':minter_})
+def nft_1(ERC721_Slim, minter_):
+    return ERC721_Slim.deploy("","",{'from':minter_})
+
+@pytest.fixture(scope="module")
+def nft(ERC721_Barebone, minter_):
+    return ERC721_Barebone.deploy("","",{'from':minter_})
 
 @pytest.fixture(scope="module")
 def stress_nft(OZ_721, minter_):
